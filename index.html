@@ -222,7 +222,7 @@
             <div class="logo-wrap">
                 <img src="https://i.postimg.cc/vHCDCdDQ/IMG-6034.jpg" class="logo-img" alt="Logo" onerror="this.src='https://via.placeholder.com/48/000000/00E5FF?text=TOP'">
                 <span class="logo-text">DownloadHub</span>
-                <span class="version-badge">v6.0</span>
+                <span class="version-badge">v7.0</span>
             </div>
         </div>
         <div class="header-right">
@@ -487,11 +487,10 @@
     </div>
 
     <script>
-        // ===== CẤU HÌNH GIST MỚI (ĐÃ GẮN) =====
-        const GIST_ID = "cb6ef38fde862eac6d6de18996f1804c";
-        const GIST_FILE = "data.json";
-        const GIST_RAW = "https://gist.githubusercontent.com/binhgold0345-wq/cb6ef38fde862eac6d6de18996f1804c/raw/4839db81de484908541faa88e058e9cbbd391c3b/data.json";
-        const GIST_TOKEN = "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";
+        // ===== CẤU HÌNH PANTRY =====
+        const PANTRY_ID = "ebd4f008-b078-4e88-82e7-6170ebbbfe0d";
+        const BASKET_NAME = "data";
+        const PANTRY_API = `https://getpantry.cloud/apiv1/pantry/${PANTRY_ID}/basket/${BASKET_NAME}`;
 
         const DEFAULT_ADMIN_CODE = "0345498359k";
         let ADMIN_CODE = localStorage.getItem('adminCode') || DEFAULT_ADMIN_CODE;
@@ -1063,23 +1062,15 @@
 
         function saveData() {
             localStorage.setItem('myHackData', JSON.stringify({ hacks, categories, catGroups }));
-            const updateUrl = `https://api.github.com/gists/${GIST_ID}`;
-            const payload = {
-                files: { [GIST_FILE]: { content: JSON.stringify({ hacks, categories, catGroups }) } }
-            };
-            fetch(updateUrl, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${GIST_TOKEN}`,
-                    'Accept': 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28'
-                },
-                body: JSON.stringify(payload)
-            }).then(r => r.json()).then(data => console.log('Đã lưu dữ liệu lên Gist!')).catch(err => console.error('Lỗi lưu Gist:', err));
+            fetch(PANTRY_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hacks, categories, catGroups })
+            }).then(r => r.json()).then(data => console.log('Đã lưu lên Pantry!')).catch(err => console.error('Lỗi lưu Pantry:', err));
         }
 
-        function loadDataFromGist() {
-            return fetch(GIST_RAW).then(r => r.json()).then(data => {
+        function loadDataFromPantry() {
+            return fetch(PANTRY_API).then(r => r.json()).then(data => {
                 if (data && data.hacks) {
                     hacks = data.hacks;
                     categories = data.categories;
@@ -1093,7 +1084,7 @@
                     renderCategories();
                 }
             }).catch(err => {
-                console.error('Lỗi tải Gist:', err);
+                console.error('Lỗi tải Pantry:', err);
                 const saved = localStorage.getItem('myHackData');
                 if (saved) {
                     try {
@@ -1109,11 +1100,11 @@
         }
 
         createStars();
-        loadDataFromGist().then(() => {
+        loadDataFromPantry().then(() => {
             renderCategories();
             renderList();
             openModalFromURL();
         });
     </script>
 </body>
-  </html>
+</html>
