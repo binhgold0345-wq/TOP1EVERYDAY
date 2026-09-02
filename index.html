@@ -222,7 +222,7 @@
             <div class="logo-wrap">
                 <img src="https://i.postimg.cc/vHCDCdDQ/IMG-6034.jpg" class="logo-img" alt="Logo" onerror="this.src='https://via.placeholder.com/48/000000/00E5FF?text=TOP'">
                 <span class="logo-text">DownloadHub</span>
-                <span class="version-badge">v7.0</span>
+                <span class="version-badge">v8.0</span>
             </div>
         </div>
         <div class="header-right">
@@ -577,6 +577,8 @@
             const list = document.getElementById('hackList');
             list.innerHTML = '';
             const filtered = hacks.filter(h => currentCategory === 'all' || h.category === currentCategory);
+            // Sắp xếp: bài ghim lên đầu
+            filtered.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
             filtered.forEach((hack, index) => {
                 const icon = catIcons[hack.category] || 'fa-gamepad';
                 const color = catColors[hack.category] || 'var(--sub)';
@@ -587,7 +589,7 @@
                 card.innerHTML = `
                     <div class="card-top">
                         <div class="card-icon" style="background: linear-gradient(135deg, ${color}, var(--purple));"><i class="fa-solid ${icon}"></i></div>
-                        <div class="card-title">${hack.title}</div>
+                        <div class="card-title">${hack.pinned ? '📌 ' : ''}${hack.title}</div>
                     </div>
                     <div class="id-tag">${hack.id}</div>
                     <button class="delete-btn" onclick="deleteHack('${hack.id}')" title="Xóa bài"><i class="fa-solid fa-trash"></i></button>
@@ -675,6 +677,8 @@
                 window.open(hack.mainLink, '_blank');
                 const count = parseInt(localStorage.getItem('dl_' + hack.id) || '0') + 1;
                 localStorage.setItem('dl_' + hack.id, count);
+                // Cập nhật lượt tải lên Pantry
+                saveData();
                 showToast('Đang mở link tải...');
                 renderList();
             };
@@ -793,7 +797,7 @@
                 }
             });
             const newId = Math.floor(Math.random() * 900000) + 100000;
-            const newHack = { id: "#" + newId, title: title, desc: desc, category: category, mainLink: mainLink, previewUrl: previewUrl, sections: sections.length > 0 ? sections : [{ label: "Link tải:", links: [mainLink] }] };
+            const newHack = { id: "#" + newId, title: title, desc: desc, category: category, mainLink: mainLink, previewUrl: previewUrl, sections: sections.length > 0 ? sections : [{ label: "Link tải:", links: [mainLink] }], pinned: false };
             hacks.unshift(newHack);
             saveData();
             renderList();
@@ -975,6 +979,7 @@
         function addGroup() {
             const name = document.getElementById('newGroupName').value.trim();
             if (!name) { showToast('Nhập tên danh mục lớn!', 'error'); return; }
+            // Lấy tất cả option được chọn
             const selected = Array.from(document.getElementById('groupCatSelect').selectedOptions).map(o => o.value);
             if (selected.length === 0) { showToast('Chọn ít nhất 1 danh mục con!', 'error'); return; }
             const newGroup = { id: 'group' + Date.now(), name: name, icon: 'fa-folder-open', categories: selected };
@@ -1012,6 +1017,16 @@
                 localStorage.removeItem('dl_' + id);
                 saveData(); renderList(); showToast('Đã xóa bài!');
             }
+        }
+
+        // ===== GHIM BÀI =====
+        function togglePin(id) {
+            const hack = hacks.find(h => h.id === id);
+            if (!hack) return;
+            hack.pinned = !hack.pinned;
+            saveData();
+            renderList();
+            showToast(hack.pinned ? 'Đã ghim bài!' : 'Đã bỏ ghim bài!');
         }
 
         function showNoticeModal() { document.getElementById('noticeModal').style.display = 'flex'; document.getElementById('noticeText').value = noticeMessage; }
@@ -1062,10 +1077,13 @@
 
         function saveData() {
             localStorage.setItem('myHackData', JSON.stringify({ hacks, categories, catGroups }));
+            // Lưu số lượt tải lên Pantry
+            const downloadCounts = {};
+            hacks.forEach(h => { downloadCounts[h.id] = parseInt(localStorage.getItem('dl_' + h.id) || '0'); });
             fetch(PANTRY_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hacks, categories, catGroups })
+                body: JSON.stringify({ hacks, categories, catGroups, downloadCounts })
             }).then(r => r.json()).then(data => console.log('Đã lưu lên Pantry!')).catch(err => console.error('Lỗi lưu Pantry:', err));
         }
 
@@ -1075,6 +1093,12 @@
                     hacks = data.hacks;
                     categories = data.categories;
                     catGroups = data.catGroups;
+                    // Cập nhật lượt tải từ Pantry
+                    if (data.downloadCounts) {
+                        Object.keys(data.downloadCounts).forEach(id => {
+                            localStorage.setItem('dl_' + id, data.downloadCounts[id]);
+                        });
+                    }
                     renderList();
                     renderCategories();
                 } else {
